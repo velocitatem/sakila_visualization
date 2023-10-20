@@ -1,60 +1,98 @@
-from sqlalchemy import create_engine
 import pandas as pd
 import matplotlib.pyplot as plt
+import sqlalchemy as sqla
 
 # Replace 'username' and 'password' with your MySQL username and password
-engine = create_engine('mysql://username:password.@localhost/sakila')
-query = """
-SELECT c.name AS category, COUNT(r.rental_id) AS rental_count
-FROM category c
-JOIN film_category fc ON c.category_id = fc.category_id
-JOIN film f ON fc.film_id = f.film_id
-JOIN inventory i ON f.film_id = i.film_id
-JOIN rental r ON i.inventory_id = r.inventory_id
-GROUP BY category;
-"""
-
-# Execute the SQL query and load the results into a pandas DataFrame
-rental_data = pd.read_sql(query, engine)
+engine = sqla.create_engine('mysql://velocitatem:Saniroot1678@localhost/sakila')
 
 
-# Set the figure size
-plt.figure(figsize=(10, 6))
+def get_data(query, engine):
+    query = sqla.text(query)
+    with engine.connect() as con:
+        data = pd.read_sql(query, con)
+    return data
 
-# Create a bar chart
-plt.bar(rental_data['category'], rental_data['rental_count'])
 
-# Customize the chart
-plt.title('Number of Rentals by Category')
-plt.xlabel('Category')
-plt.ylabel('Rental Count')
-plt.xticks(rotation=45)  # Rotate category labels for readability
+queries = [
+    """
+select category.name, avg(film.rating) as avr from film
+join film_category on film_category.film_id = film.film_id
+join category on category.category_id = film_category.category_id
+group by category.name
+order by avr desc
+;
+    """,
+    """
+SELECT film.title, sum(amount) as sum
+FROM payment
+JOIN rental ON payment.rental_id = rental.rental_id
+join inventory on rental.inventory_id = inventory.inventory_id
+JOIN film on inventory.film_id = film.film_id
+GROUP BY inventory.film_id
+ORDER by sum desc
+limit 5
+;
+    """,
+# this one we use a histogram
+    """
+select customer.customer_id, sum(payment.amount) as tt from customer
+join payment on payment.customer_id = customer.customer_id
+group by customer.customer_id
+order by tt desc
+;
+    """,
+    """
+select category.name, avg(film.rating) as avr from film
+join film_category on film_category.film_id = film.film_id
+join category on category.category_id = film_category.category_id
+group by category.name
+order by avr desc
+;
+    """,
+    """
+select * from
+(select category.name, avg(film.length) as ad from film
+join film_category on film.film_id = film_category.film_id
+join category on category.category_id = film_category.category_id
+group by category.category_id
+) as subquery where ad >
+( select avg(film.length) from film )
+;
+    """
+]
 
-# Display the chart
-plt.tight_layout()
-plt.show()
 
-query = """
-SELECT DATE(rental_date) AS rental_day, COUNT(rental_id) AS rental_count
-FROM rental
-GROUP BY rental_day;
-"""
+axes = [
+    ['category', 'average rating'],
+    ['film', 'total amount'],
+    ['customer', 'total amount'],
+    ['category', 'average rating'],
+    ['category', 'average length']
+]
 
-# Execute the SQL query and load the results into a pandas DataFrame
-rental_data = pd.read_sql(query, engine)
+axes_points = [
+    ["name", "avr"],
+    ["title", "sum"],
+    ["customer_id", "tt"],
+    ["name", "avr"],
+    ["name", "ad"]
+]
 
-# Set the figure size
-plt.figure(figsize=(12, 6))
 
-# Create a time-series line chart
-plt.plot(rental_data['rental_day'], rental_data['rental_count'], marker='o', linestyle='-')
 
-# Customize the chart
-plt.title('Rental Count Over Time')
-plt.xlabel('Rental Day')
-plt.ylabel('Rental Count')
-plt.xticks(rotation=45)  # Rotate x-axis labels for readability
+data = [get_data(query, engine) for query in queries]
 
-# Display the chart
-plt.tight_layout()
+# plot bar charts
+for i in [0,1,3,4]:
+    data[i].plot.bar(x=axes_points[i][0], y=axes_points[i][1])
+    plt.xlabel(axes[i][0])
+    plt.ylabel(axes[i][1])
+    plt.title("bar chart")
+    plt.show()
+
+# plot histogram
+data[2].plot.hist(x=axes_points[2][0], y=axes_points[2][1])
+plt.xlabel(axes[2][0])
+plt.ylabel(axes[2][1])
+plt.title("histogram")
 plt.show()
