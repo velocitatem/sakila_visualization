@@ -1,18 +1,20 @@
+import dash
+from dash import html,dcc
+from dash.dependencies import Input, Output
 import pandas as pd
+from sqlalchemy import create_engine, text
 import matplotlib.pyplot as plt
-import sqlalchemy as sqla
 
-# Replace 'username' and 'password' with your MySQL username and password
+# load dotenv
 from dotenv import load_dotenv
 import os
 load_dotenv()
 pss=os.getenv('PASS')
 
-
-engine = sqla.create_engine(f'mysql://velocitatem:{pss}@localhost/sakila')
+engine = create_engine(f'mysql://velocitatem:{pss}@localhost/sakila')
 
 def get_data(query, engine):
-    query = sqla.text(query)
+    query = text(query)
     with engine.connect() as con:
         data = pd.read_sql(query, con)
     return data
@@ -87,17 +89,12 @@ axes_points = [
 
 data = [get_data(query, engine) for query in queries]
 
-# plot bar charts
-for i in [0,1,3,4]:
-    data[i].plot.bar(x=axes_points[i][0], y=axes_points[i][1])
-    plt.xlabel(axes[i][0])
-    plt.ylabel(axes[i][1])
-    plt.title("bar chart")
-    plt.show()
+app = dash.Dash(__name__)
 
-# plot histogram
-data[2].plot.hist(x=axes_points[2][0], y=axes_points[2][1])
-plt.xlabel(axes[2][0])
-plt.ylabel(axes[2][1])
-plt.title("histogram")
-plt.show()
+app.layout = html.Div([
+    html.H1('Sakila Dashboard'),
+    ] + [dcc.Graph( id='graph-{}'.format(i), figure={ 'data': [ { 'x': data[i][axes_points[i][0]], 'y': data[i][axes_points[i][1]], 'type': 'bar', 'name': axes[i][1] }, ], 'layout': { 'title': axes[i][0] } } ) for i in range(len(queries)) ] )
+
+
+if __name__ == '__main__':
+    app.run_server(debug=True)

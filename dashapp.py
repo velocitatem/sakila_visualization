@@ -2,10 +2,16 @@ import dash
 from dash import html,dcc
 from dash.dependencies import Input, Output
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 # Connect to the Sakila database
-engine = create_engine('mysql://username:password@localhost/sakila')
+from dotenv import load_dotenv
+import os
+load_dotenv()
+pss=os.getenv('PASS')
+
+
+engine = create_engine(f'mysql://velocitatem:{pss}@localhost/sakila')
 
 # Create the Dash app
 app = dash.Dash(__name__)
@@ -13,7 +19,7 @@ app = dash.Dash(__name__)
 # Define the layout of the app
 app.layout = html.Div([
     html.H1("Sakila Rental Data Over Time"),
-    
+
     # Dropdown to select a category
     dcc.Dropdown(
         id='category-dropdown',
@@ -24,7 +30,7 @@ app.layout = html.Div([
         ],
         value=1  # Default selected option
     ),
-    
+
     # Line chart to display data over time
     dcc.Graph(id='line-chart')
 ])
@@ -46,24 +52,26 @@ def update_line_chart(selected_category):
     GROUP BY rental_day;
     """
 
-    rental_data = pd.read_sql(query, engine)
+    with engine.connect() as con:
+        rental_data = pd.read_sql(text(query), con)
 
-    # Create the line chart
+    # import model and predict the next 30 days
+    import pickle
+    with open("model.pkl", "rb") as f:
+        model = pickle.load(f)
+
+
+
+
+    # Create the line chart with predictions and real data
+
     fig = {
         'data': [
-            {
-                'x': rental_data['rental_day'],
-                'y': rental_data['rental_count'],
-                'type': 'bar',
-                'marker': {'color': 'blue'}
-            }
+            { 'x': rental_data.index, 'y': rental_data['rental_count'], 'type': 'line', 'name': 'Real Data' },
         ],
-        'layout': {
-            'title': f'Rental Count for Category {selected_category}',
-            'xaxis': {'title': 'Rental Day'},
-            'yaxis': {'title': 'Rental Count'}
-        }
+        'layout ': { 'title': 'Sakila Rental Data Over Time' }
     }
+
 
     return fig
 
