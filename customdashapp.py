@@ -91,8 +91,9 @@ data = [get_data(query, engine) for query in queries]
 
 app = dash.Dash(__name__)
 
+# add dropdown to view data and then predict data
 app.layout = html.Div([
-    html.H1('Sakila Dashboard'),
+    html.H1('Sakila Dashboard')
     ] + [dcc.Graph( id='graph-{}'.format(i), figure={ 'data': [ { 'x': data[i][axes_points[i][0]], 'y': data[i][axes_points[i][1]], 'type': 'bar', 'name': axes[i][1] }, ], 'layout': { 'title': axes[i][0] } } ) for i in range(len(queries)) ] )
 
 
